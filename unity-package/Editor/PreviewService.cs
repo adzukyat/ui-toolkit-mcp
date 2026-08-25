@@ -86,6 +86,7 @@ namespace UIToolkitMcpPreviewServer
             var target = TargetCatalog.Resolve(parameters.target);
             ApplyPreviewDefaults(parameters, target.preview);
             var warnings = new List<string>();
+            var background = ResolveBackground(parameters.background, parameters.theme);
 
             using (var session = CreateSession(target, parameters.width, parameters.height, parameters.theme))
             using (var expander = new ScrollViewExpander())
@@ -117,7 +118,7 @@ namespace UIToolkitMcpPreviewServer
                 var artifacts = new List<ScreenshotArtifact>();
                 if (!parameters.fullHeight && !string.IsNullOrEmpty(selector))
                 {
-                    var raw = session.CapturePng(parameters.width, parameters.height, 0, ParseColor(parameters.background));
+                    var raw = session.CapturePng(parameters.width, parameters.height, 0, background);
                     var png = PngCropper.Crop(raw, selectedOriginX, selectedOriginY, selectedWidth, selectedHeight);
                     var path = ArtifactStore.WritePng(png);
                     artifacts.Add(new ScreenshotArtifact
@@ -132,7 +133,7 @@ namespace UIToolkitMcpPreviewServer
                 while (artifacts.Count == 0 && offset < contentHeight)
                 {
                     var tileHeight = Mathf.Min(tileLimit, contentHeight - offset);
-                    var raw = session.CapturePng(parameters.width, tileHeight, selectedOriginY + offset, ParseColor(parameters.background));
+                    var raw = session.CapturePng(parameters.width, tileHeight, selectedOriginY + offset, background);
                     var png = string.IsNullOrEmpty(selector)
                         ? raw
                         : PngCropper.Crop(raw, selectedOriginX, 0, selectedWidth, tileHeight);
@@ -239,14 +240,22 @@ namespace UIToolkitMcpPreviewServer
             if (string.IsNullOrEmpty(parameters.theme))
                 parameters.theme = "editor-dark";
             if (string.IsNullOrEmpty(parameters.background))
-                parameters.background = "#00000000";
+                parameters.background = "theme";
         }
 
-        private static Color ParseColor(string value)
+        internal static Color ResolveBackground(string value, string theme)
         {
+            if (string.Equals(value, "theme", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.Equals(theme, "editor-dark", StringComparison.OrdinalIgnoreCase))
+                    return new Color32(56, 56, 56, 255);
+                if (string.Equals(theme, "editor-light", StringComparison.OrdinalIgnoreCase))
+                    return new Color32(200, 200, 200, 255);
+                return Color.clear;
+            }
             if (!string.IsNullOrEmpty(value) && ColorUtility.TryParseHtmlString(value, out var color))
                 return color;
-            throw new ArgumentException($"Invalid background color '{value}'. Use #RRGGBB or #RRGGBBAA.");
+            throw new ArgumentException($"Invalid background color '{value}'. Use theme, #RRGGBB, or #RRGGBBAA.");
         }
     }
 }

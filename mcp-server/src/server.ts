@@ -132,7 +132,10 @@ export function createServer(): McpServer {
         width: z.number().int().min(64).max(16384).default(1280),
         height: z.union([z.number().int().min(64).max(16384), z.literal("full")]).default(720),
         theme: z.enum(["editor-dark", "editor-light", "runtime"]).default("editor-dark"),
-        background: z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/).default("#00000000"),
+        background: z
+          .union([z.literal("theme"), z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/)])
+          .default("theme")
+          .describe("Canvas background. Defaults to the selected theme; use #00000000 for transparency."),
       }),
       annotations: readOnlyAnnotations,
     },

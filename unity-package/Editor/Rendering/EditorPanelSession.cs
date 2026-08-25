@@ -85,7 +85,9 @@ namespace UIToolkitMcpPreviewServer.Rendering
         {
             SetViewport(width, height);
             var previousPosition = _contentRoot.transform.position;
+            var previousBackground = _panelRoot.style.backgroundColor;
             _contentRoot.transform.position = new Vector3(previousPosition.x, previousPosition.y - offsetY, previousPosition.z);
+            _panelRoot.style.backgroundColor = background;
             ValidateLayout();
             var renderTexture = new RenderTexture(_width, _height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default)
             {
@@ -99,6 +101,8 @@ namespace UIToolkitMcpPreviewServer.Rendering
             finally
             {
                 _contentRoot.transform.position = previousPosition;
+                _panelRoot.style.backgroundColor = previousBackground;
+                ValidateLayout();
                 renderTexture.Release();
                 UnityEngine.Object.DestroyImmediate(renderTexture);
             }

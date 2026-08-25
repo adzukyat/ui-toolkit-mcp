@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UIToolkitMcpPreviewServer.Protocol;
+using UnityEngine;
 
 namespace UIToolkitMcpPreviewServer.Tests
 {
@@ -52,6 +53,27 @@ namespace UIToolkitMcpPreviewServer.Tests
             var serialized = Json.Serialize(descriptor);
             Assert.That(serialized, Does.Contain("\"schemaVersion\":1"));
             Assert.That(serialized, Does.Not.Contain("token"));
+        }
+
+        [TestCase("editor-dark", 56)]
+        [TestCase("editor-light", 200)]
+        public void ThemeBackgroundUsesUnityEditorCanvasColor(string theme, int channel)
+        {
+            var color = (Color32)PreviewService.ResolveBackground("theme", theme);
+            Assert.That(color, Is.EqualTo(new Color32((byte)channel, (byte)channel, (byte)channel, 255)));
+        }
+
+        [Test]
+        public void RuntimeThemeBackgroundStaysTransparent()
+        {
+            Assert.That(PreviewService.ResolveBackground("theme", "runtime"), Is.EqualTo(Color.clear));
+        }
+
+        [Test]
+        public void ExplicitBackgroundOverridesTheme()
+        {
+            var color = (Color32)PreviewService.ResolveBackground("#12345678", "editor-dark");
+            Assert.That(color, Is.EqualTo(new Color32(0x12, 0x34, 0x56, 0x78)));
         }
     }
 }

@@ -76,6 +76,8 @@ Place a `.ui-toolkit-mcp-preview.json` file in the project root to define stable
 
 Supported themes are `editor-dark`, `editor-light`, and `runtime`. A `panelSettings` asset path can also be specified for the runtime theme.
 
+Screenshots use the selected theme's standard canvas color by default (`#383838` for Editor Dark and `#C8C8C8` for Editor Light). Pass `#00000000` as `background` when a transparent PNG is required. Runtime previews remain transparent unless the UI itself paints a background.
+
 ## Development and verification
 
 ```bash

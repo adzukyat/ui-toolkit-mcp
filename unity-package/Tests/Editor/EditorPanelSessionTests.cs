@@ -87,6 +87,42 @@ namespace UIToolkitMcpPreviewServer.Tests
             File.Delete(result.artifacts[0].path);
         }
 
+        [TestCase("theme", 255)]
+        [TestCase("#00000000", 0)]
+        public void EditorCanvasHonorsBackgroundMode(string background, int expectedAlpha)
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required for screenshot verification.");
+
+            var result = PreviewService.Screenshot(new ScreenshotParameters
+            {
+                target = new TargetReference { id = EditorFixturePath },
+                width = 400,
+                height = 300,
+                theme = "editor-dark",
+                background = background
+            });
+            var path = result.artifacts[0].path;
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Assert.That(texture.LoadImage(File.ReadAllBytes(path)), Is.True);
+                var corner = (Color32)texture.GetPixel(texture.width - 1, texture.height - 1);
+                Assert.That(corner.a, Is.EqualTo(expectedAlpha));
+                if (expectedAlpha > 0)
+                {
+                    Assert.That(corner.r, Is.GreaterThan(0), "The themed canvas must not remain transparent black.");
+                    Assert.That(corner.r, Is.EqualTo(corner.g));
+                    Assert.That(corner.g, Is.EqualTo(corner.b));
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
+                File.Delete(path);
+            }
+        }
+
         [Test]
         public void EditorWindowCaptureStartsAtContentWithoutResizingLiveRoot()
         {

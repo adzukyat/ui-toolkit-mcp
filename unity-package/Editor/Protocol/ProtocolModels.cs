@@ -117,7 +117,7 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public int height = 720;
         public bool fullHeight;
         public string theme = "editor-dark";
-        public string background = "#00000000";
+        public string background = "theme";
     }
 
     [Serializable]

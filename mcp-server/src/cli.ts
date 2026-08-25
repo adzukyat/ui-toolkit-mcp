@@ -59,7 +59,7 @@ export async function runCli(command: string, args: string[]): Promise<void> {
           height: 720,
           fullHeight,
           theme: "editor-dark",
-          background: "#00000000",
+          background: "theme",
         }),
       );
       return;
