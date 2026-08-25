@@ -12,8 +12,6 @@ namespace UIToolkitMcpPreviewServer.Rendering
         private readonly EditorWindow _window;
         private readonly object _panel;
         private readonly MethodInfo _validateLayout;
-        private readonly StyleLength _width;
-        private readonly StyleLength _height;
         private readonly Vector3 _position;
 
         internal EditorWindowSession(EditorWindow window)
@@ -22,8 +20,6 @@ namespace UIToolkitMcpPreviewServer.Rendering
             _panel = window.rootVisualElement.panel ?? throw new InvalidOperationException("The EditorWindow is not attached to a panel.");
             _validateLayout = _panel.GetType().GetMethod("ValidateLayout", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                               ?? throw new NotSupportedException("The EditorWindow panel has no ValidateLayout method.");
-            _width = Root.style.width;
-            _height = Root.style.height;
             _position = Root.transform.position;
         }
 
@@ -32,9 +28,9 @@ namespace UIToolkitMcpPreviewServer.Rendering
 
         public void SetViewport(int width, int height)
         {
-            Root.style.width = Mathf.Max(64, width);
-            Root.style.height = Mathf.Max(64, height);
-            PanelReflection.ConfigureRepaintData(_panel, width, height);
+            // A live EditorWindow shares its panel with Unity's dock chrome. Changing the
+            // root size reflows that shared hierarchy and can place the dock tabs over the
+            // window content. The requested size is only the capture canvas for windows.
         }
 
         public void ValidateLayout()
@@ -44,22 +40,37 @@ namespace UIToolkitMcpPreviewServer.Rendering
 
         public byte[] CapturePng(int width, int height, int offsetY, Color background)
         {
-            SetViewport(width, height);
-            var previous = Root.transform.position;
-            Root.transform.position = new Vector3(previous.x, previous.y - offsetY, previous.z);
             ValidateLayout();
-            var renderTexture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default)
+            var rootBounds = Root.worldBound;
+            var worldClip = PanelReflection.GetWorldClip(Root);
+            var insetX = Mathf.Max(0, Mathf.CeilToInt(worldClip.xMin - rootBounds.xMin));
+            var insetY = Mathf.Max(0, Mathf.CeilToInt(worldClip.yMin - rootBounds.yMin));
+            var originX = Mathf.Max(0, Mathf.FloorToInt(rootBounds.xMin) + insetX);
+            var originY = Mathf.Max(0, Mathf.FloorToInt(rootBounds.yMin) + insetY);
+            if (width > SystemInfo.maxTextureSize - originX || height > SystemInfo.maxTextureSize - originY)
+                throw new InvalidOperationException("The EditorWindow capture plus its panel offset exceeds the maximum texture size.");
+            var previous = Root.transform.position;
+            Root.transform.position = new Vector3(previous.x + insetX, previous.y + insetY - offsetY, previous.z);
+            ValidateLayout();
+            var renderWidth = width + originX;
+            var renderHeight = height + originY;
+            var renderTexture = new RenderTexture(renderWidth, renderHeight, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 name = "UI Toolkit EditorWindow Preview"
             };
             try
             {
-                return TextureCapture.Capture(renderTexture, () => PanelReflection.PrepareAndRender(_panel), background);
+                using (PanelReflection.OverrideRepaintData(_panel, renderWidth, renderHeight))
+                {
+                    var panelPng = TextureCapture.Capture(renderTexture, () => PanelReflection.PrepareAndRender(_panel), background);
+                    return PngCropper.Crop(panelPng, originX, originY, width, height);
+                }
             }
             finally
             {
                 Root.transform.position = previous;
+                ValidateLayout();
                 renderTexture.Release();
                 UnityEngine.Object.DestroyImmediate(renderTexture);
             }
@@ -68,8 +79,6 @@ namespace UIToolkitMcpPreviewServer.Rendering
         public void Dispose()
         {
             Root.transform.position = _position;
-            Root.style.width = _width;
-            Root.style.height = _height;
             _window.Repaint();
         }
     }

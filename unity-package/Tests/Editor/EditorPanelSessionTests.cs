@@ -11,6 +11,10 @@ namespace UIToolkitMcpPreviewServer.Tests
 {
     internal sealed class EditorPanelSessionTests
     {
+        private sealed class WindowFixture : EditorWindow
+        {
+        }
+
         private const string RuntimeFixturePath = "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/RuntimeFixture.uxml";
         private const string EditorFixturePath = "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/EditorFixture.uxml";
 
@@ -81,6 +85,62 @@ namespace UIToolkitMcpPreviewServer.Tests
             Assert.That(result.artifacts[0].height, Is.EqualTo(40));
             Assert.That(File.Exists(result.artifacts[0].path), Is.True);
             File.Delete(result.artifacts[0].path);
+        }
+
+        [Test]
+        public void EditorWindowCaptureStartsAtContentWithoutResizingLiveRoot()
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required to attach an EditorWindow.");
+
+            var window = ScriptableObject.CreateInstance<WindowFixture>();
+            try
+            {
+                window.rootVisualElement.style.backgroundColor = Color.magenta;
+                var header = new VisualElement();
+                header.style.height = 40;
+                header.style.flexShrink = 0;
+                header.style.backgroundColor = Color.green;
+                window.rootVisualElement.Add(header);
+                window.position = new Rect(100, 100, 320, 180);
+                window.Show();
+                if (window.rootVisualElement.panel == null)
+                    Assert.Ignore("The test EditorWindow was not attached to a panel.");
+
+                var originalWidth = window.rootVisualElement.style.width;
+                var originalHeight = window.rootVisualElement.style.height;
+                using (var session = new EditorWindowSession(window))
+                {
+                    session.SetViewport(1600, 1200);
+                    var png = session.CapturePng(320, 180, 0, Color.clear);
+                    var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    try
+                    {
+                        Assert.That(texture.LoadImage(png), Is.True);
+                        Assert.That(texture.width, Is.EqualTo(320));
+                        Assert.That(texture.height, Is.EqualTo(180));
+                        var sampleX = Mathf.Min(texture.width / 2, Mathf.Max(1, Mathf.FloorToInt(window.rootVisualElement.worldBound.width / 2)));
+                        var topCenter = texture.GetPixel(sampleX, 10);
+                        var bottomCenter = texture.GetPixel(sampleX, texture.height - 10);
+                        Assert.That(topCenter.r, Is.GreaterThan(0.7f),
+                            $"The window content should start at the top of the capture. top={topCenter}, bottom={bottomCenter}, root={window.rootVisualElement.worldBound}, header={header.worldBound}");
+                        Assert.That(topCenter.b, Is.GreaterThan(0.7f), "Editor chrome should not cover the window content.");
+                        Assert.That(topCenter.g, Is.LessThan(0.3f), "Editor chrome should not cover the window content.");
+                    }
+                    finally
+                    {
+                        Object.DestroyImmediate(texture);
+                    }
+                }
+
+                Assert.That(window.rootVisualElement.style.width.value, Is.EqualTo(originalWidth.value));
+                Assert.That(window.rootVisualElement.style.height.value, Is.EqualTo(originalHeight.value));
+            }
+            finally
+            {
+                window.Close();
+                Object.DestroyImmediate(window);
+            }
         }
     }
 }
