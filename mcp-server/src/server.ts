@@ -20,7 +20,7 @@ const readOnlyAnnotations = {
 export function createServer(): McpServer {
   const session = new ProjectSession();
   const server = new McpServer(
-    { name: "ui-toolkit-mcp-server", version: "0.2.0" },
+    { name: "ui-toolkit-mcp-server", version: "0.2.2" },
     {
       capabilities: { tools: {} },
       instructions:
