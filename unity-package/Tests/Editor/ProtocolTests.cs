@@ -75,5 +75,21 @@ namespace UIToolkitMcpPreviewServer.Tests
             var color = (Color32)PreviewService.ResolveBackground("#12345678", "editor-dark");
             Assert.That(color, Is.EqualTo(new Color32(0x12, 0x34, 0x56, 0x78)));
         }
+
+        [Test]
+        public void PreviewBackgroundAppliesToDefaultScreenshotBackground()
+        {
+            var parameters = new ScreenshotParameters { background = "theme" };
+            PreviewService.ApplyPreviewDefaults(parameters, new PreviewDefinition { background = "#12345678" });
+            Assert.That(parameters.background, Is.EqualTo("#12345678"));
+        }
+
+        [Test]
+        public void ExplicitScreenshotBackgroundOverridesPreviewBackground()
+        {
+            var parameters = new ScreenshotParameters { background = "#AABBCCDD" };
+            PreviewService.ApplyPreviewDefaults(parameters, new PreviewDefinition { background = "#12345678" });
+            Assert.That(parameters.background, Is.EqualTo("#AABBCCDD"));
+        }
     }
 }

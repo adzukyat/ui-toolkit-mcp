@@ -67,6 +67,7 @@ Place a `.ui-toolkit-mcp-preview.json` file in the project root to define stable
       "document": "Assets/UI/Settings.uxml",
       "stylesheets": ["Assets/UI/Settings.uss"],
       "theme": "editor-dark",
+      "background": "#383838",
       "selector": "#settings-root",
       "viewport": { "width": 480, "height": "full" }
     }
@@ -74,7 +75,7 @@ Place a `.ui-toolkit-mcp-preview.json` file in the project root to define stable
 }
 ```
 
-Supported themes are `editor-dark`, `editor-light`, and `runtime`. A `panelSettings` asset path can also be specified for the runtime theme.
+Supported themes are `editor-dark`, `editor-light`, and `runtime`. `background` accepts `theme`, `#RRGGBB`, or `#RRGGBBAA`. A `panelSettings` asset path can also be specified for the runtime theme.
 
 Screenshots use the selected theme's standard canvas color by default (`#383838` for Editor Dark and `#C8C8C8` for Editor Light). Pass `#00000000` as `background` when a transparent PNG is required. Runtime previews remain transparent unless the UI itself paints a background.
 

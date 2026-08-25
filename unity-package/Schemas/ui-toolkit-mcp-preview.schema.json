@@ -24,6 +24,12 @@
           "panelSettings": { "type": "string" },
           "selector": { "type": "string" },
           "theme": { "enum": ["editor-dark", "editor-light", "runtime"] },
+          "background": {
+            "oneOf": [
+              { "const": "theme" },
+              { "type": "string", "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+            ]
+          },
           "viewport": {
             "type": "object",
             "additionalProperties": false,

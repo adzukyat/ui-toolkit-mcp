@@ -203,7 +203,7 @@ namespace UIToolkitMcpPreviewServer
             return new RuntimePanelSession(target.document, preview, width, height);
         }
 
-        private static void ApplyPreviewDefaults(ScreenshotParameters parameters, PreviewDefinition preview)
+        internal static void ApplyPreviewDefaults(ScreenshotParameters parameters, PreviewDefinition preview)
         {
             if (preview == null)
                 return;
@@ -211,6 +211,8 @@ namespace UIToolkitMcpPreviewServer
                 parameters.selector = preview.selector;
             if (!string.IsNullOrEmpty(preview.theme) && parameters.theme == "editor-dark")
                 parameters.theme = preview.theme;
+            if (!string.IsNullOrEmpty(preview.background) && parameters.background == "theme")
+                parameters.background = preview.background;
             if (preview.viewport != null)
             {
                 if (preview.viewport.width >= 64 && parameters.width == 1280)

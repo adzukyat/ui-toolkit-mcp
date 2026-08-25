@@ -254,6 +254,7 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public string panelSettings;
         public string selector;
         public string theme;
+        public string background;
         public PreviewViewport viewport;
     }
 
