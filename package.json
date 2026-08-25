@@ -1,0 +1,17 @@
+{
+  "name": "ui-toolkit-mcp",
+  "author": "adzukyat",
+  "private": true,
+  "workspaces": [
+    "mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace mcp-server",
+    "test": "npm run test --workspace mcp-server",
+    "typecheck": "npm run typecheck --workspace mcp-server",
+    "pack:mcp": "npm pack --workspace mcp-server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "ui-toolkit-mcp-server",
+  "version": "0.2.0",
+  "author": "adzukyat",
+  "description": "MCP server for inspecting and capturing Unity UI Toolkit previews",
+  "type": "module",
+  "bin": {
+    "ui-toolkit-mcp-server": "dist/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "unity",
+    "ui-toolkit",
+    "mcp",
+    "uxml",
+    "uss"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

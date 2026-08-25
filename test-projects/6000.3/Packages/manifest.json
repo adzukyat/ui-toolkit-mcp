@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "me.adzuki.ui-toolkit-mcp.preview-server": "file:../../../unity-package",
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.test-framework": "1.6.0"
+  },
+  "testables": [
+    "me.adzuki.ui-toolkit-mcp.preview-server"
+  ]
+}

@@ -1,0 +1,28 @@
+.fixture-root {
+    width: 320px;
+    min-height: 240px;
+    padding: 12px;
+    background-color: rgb(24, 30, 42);
+}
+
+.fixture-title {
+    height: 40px;
+    font-size: 22px;
+    color: rgb(240, 245, 255);
+}
+
+.fixture-scroll {
+    height: 120px;
+    margin-top: 8px;
+    background-color: rgb(40, 52, 72);
+}
+
+.fixture-row {
+    height: 32px;
+    color: rgb(220, 228, 240);
+}
+
+.fixture-bottom {
+    background-color: rgb(220, 70, 90);
+}
+

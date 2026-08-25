@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.DS_Store
+
+# Unity generated state
+Library/
+Temp/
+Logs/
+UserSettings/
+obj/
+TestResults.xml
+
+# Preview server artifacts and local configuration
+.ui-toolkit-mcp-preview.local.json

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ui-toolkit-mcp-preview:schema:1",
+  "title": "UI Toolkit MCP preview configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "previews"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "previews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["alias", "document"],
+        "properties": {
+          "alias": { "type": "string", "minLength": 1 },
+          "document": { "type": "string", "minLength": 1 },
+          "stylesheets": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          },
+          "panelSettings": { "type": "string" },
+          "selector": { "type": "string" },
+          "theme": { "enum": ["editor-dark", "editor-light", "runtime"] },
+          "viewport": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "width": { "type": "integer", "minimum": 64, "maximum": 16384 },
+              "height": {
+                "oneOf": [
+                  { "type": "integer", "minimum": 64, "maximum": 16384 },
+                  { "const": "full" }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

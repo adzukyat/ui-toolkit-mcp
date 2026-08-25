@@ -1,0 +1,21 @@
+{
+  "name": "me.adzuki.ui-toolkit-mcp.preview-server",
+  "version": "0.2.0",
+  "displayName": "UI Toolkit MCP Preview Server",
+  "description": "Editor-side rendering and inspection service for UI Toolkit MCP clients.",
+  "unity": "2022.3",
+  "author": {
+    "name": "adzukyat"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ui-toolkit",
+    "uxml",
+    "uss",
+    "mcp",
+    "editor"
+  ],
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}

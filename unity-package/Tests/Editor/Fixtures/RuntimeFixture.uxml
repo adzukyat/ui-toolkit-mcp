@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="fixture-root" class="fixture-root">
+        <ui:Label name="title" text="Preview Fixture" class="fixture-title" />
+        <ui:Button name="action" text="Action" />
+        <ui:ScrollView name="scroll" class="fixture-scroll">
+            <ui:Label text="Row 01" class="fixture-row" />
+            <ui:Label text="Row 02" class="fixture-row" />
+            <ui:Label text="Row 03" class="fixture-row" />
+            <ui:Label text="Row 04" class="fixture-row" />
+            <ui:Label text="Row 05" class="fixture-row" />
+            <ui:Label text="Row 06" class="fixture-row" />
+            <ui:Label text="Row 07" class="fixture-row" />
+            <ui:Label text="Row 08" class="fixture-row" />
+            <ui:Label text="Row 09" class="fixture-row" />
+            <ui:Label text="Row 10" class="fixture-row" />
+            <ui:Label name="bottom-sentinel" text="Bottom Sentinel" class="fixture-row fixture-bottom" />
+        </ui:ScrollView>
+    </ui:VisualElement>
+    <Style src="RuntimeFixture.uss" />
+</ui:UXML>
+

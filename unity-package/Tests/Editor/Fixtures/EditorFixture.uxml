@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML
+    xmlns:ui="UnityEngine.UIElements"
+    xmlns:uie="UnityEditor.UIElements"
+    editor-extension-mode="True">
+    <ui:VisualElement name="editor-fixture-root" style="width: 360px; min-height: 220px; padding: 12px;">
+        <ui:Label name="editor-title" text="Editor Fixture" style="font-size: 20px; height: 36px;" />
+        <uie:ObjectField name="object-field" label="Asset" allow-scene-objects="false" />
+        <ui:HelpBox name="help" text="Editor-only controls must render in the editor panel backend." message-type="Info" />
+    </ui:VisualElement>
+</ui:UXML>
+

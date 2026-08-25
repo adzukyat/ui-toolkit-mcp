@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "previews": [
+    {
+      "alias": "fixture",
+      "document": "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/RuntimeFixture.uxml",
+      "theme": "editor-dark",
+      "viewport": {
+        "width": 400,
+        "height": "full"
+      }
+    }
+  ]
+}

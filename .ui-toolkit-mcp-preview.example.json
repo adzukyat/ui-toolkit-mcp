@@ -1,0 +1,16 @@
+{
+  "$schema": "./Packages/me.adzuki.ui-toolkit-mcp.preview-server/Schemas/ui-toolkit-mcp-preview.schema.json",
+  "schemaVersion": 1,
+  "previews": [
+    {
+      "alias": "settings",
+      "document": "Assets/UI/Settings.uxml",
+      "stylesheets": ["Assets/UI/Settings.uss"],
+      "theme": "editor-dark",
+      "viewport": {
+        "width": 480,
+        "height": "full"
+      }
+    }
+  ]
+}
