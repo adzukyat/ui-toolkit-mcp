@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 - 2026-09-01
 
 - Fixed full-height captures of selected elements inside scroll views.
 - Inspect selected scroll content after moving it into view so viewport overflow reports reflect the visible position.
