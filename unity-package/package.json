@@ -1,6 +1,6 @@
 {
   "name": "me.adzuki.ui-toolkit-mcp.preview-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "displayName": "UI Toolkit MCP Preview Server",
   "description": "Editor-side rendering and inspection service for UI Toolkit MCP clients.",
   "unity": "2022.3",

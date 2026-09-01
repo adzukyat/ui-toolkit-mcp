@@ -36,6 +36,7 @@ export interface TargetInfo {
   title?: string;
   editorOnly: boolean;
   configured: boolean;
+  initialization: "uxml-only" | "live";
 }
 
 export interface StatusResult {
@@ -62,6 +63,18 @@ export interface InspectResult {
   viewportHeight: number;
   selector?: string;
   root: Record<string, unknown>;
+  overflows: Array<{
+    path: string;
+    parentPath: string;
+    bounds: { x: number; y: number; width: number; height: number };
+    parentBounds: { x: number; y: number; width: number; height: number };
+    outsideParent: boolean;
+    outsideViewport: boolean;
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }>;
   warnings: string[];
 }
 
@@ -70,7 +83,17 @@ export interface ScreenshotArtifact {
   width: number;
   height: number;
   offsetY: number;
+  viewportWidth: number;
   mimeType: string;
+}
+
+export interface ScreenshotCapture {
+  viewportWidth: number;
+  viewportHeight: number;
+  artifacts: ScreenshotArtifact[];
+  contentWidth: number;
+  contentHeight: number;
+  tiled: boolean;
 }
 
 export interface ScreenshotResult {
@@ -81,6 +104,7 @@ export interface ScreenshotResult {
   contentHeight: number;
   tiled: boolean;
   selector?: string;
+  captures: ScreenshotCapture[];
   warnings: string[];
 }
 

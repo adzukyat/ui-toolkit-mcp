@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace UIToolkitMcpPreviewServer.Protocol
 {
@@ -104,8 +106,8 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public string selector;
         public int depth = 8;
         public bool includeResolvedStyles = true;
-        public int width = 1280;
-        public int height = 720;
+        public int width;
+        public int height;
     }
 
     [Serializable]
@@ -113,11 +115,12 @@ namespace UIToolkitMcpPreviewServer.Protocol
     {
         public TargetReference target;
         public string selector;
-        public int width = 1280;
-        public int height = 720;
+        public int width;
+        public int[] widths;
+        public int height;
         public bool fullHeight;
-        public string theme = "editor-dark";
-        public string background = "theme";
+        public string theme;
+        public string background;
     }
 
     [Serializable]
@@ -151,6 +154,7 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public string title;
         public bool editorOnly;
         public bool configured;
+        public string initialization;
     }
 
     [Serializable]
@@ -197,6 +201,21 @@ namespace UIToolkitMcpPreviewServer.Protocol
     }
 
     [Serializable]
+    internal sealed class OverflowInfo
+    {
+        public string path;
+        public string parentPath;
+        public RectInfo bounds;
+        public RectInfo parentBounds;
+        public bool outsideParent;
+        public bool outsideViewport;
+        public float left;
+        public float top;
+        public float right;
+        public float bottom;
+    }
+
+    [Serializable]
     internal sealed class InspectResult
     {
         public int schemaVersion = 1;
@@ -205,6 +224,7 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public int viewportHeight;
         public string selector;
         public ElementInfo root;
+        public OverflowInfo[] overflows;
         public string[] warnings;
     }
 
@@ -215,7 +235,19 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public int width;
         public int height;
         public int offsetY;
+        public int viewportWidth;
         public string mimeType = "image/png";
+    }
+
+    [Serializable]
+    internal sealed class ScreenshotCapture
+    {
+        public int viewportWidth;
+        public int viewportHeight;
+        public ScreenshotArtifact[] artifacts;
+        public int contentWidth;
+        public int contentHeight;
+        public bool tiled;
     }
 
     [Serializable]
@@ -228,6 +260,7 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public int contentHeight;
         public bool tiled;
         public string selector;
+        public ScreenshotCapture[] captures;
         public string[] warnings;
     }
 
@@ -256,12 +289,27 @@ namespace UIToolkitMcpPreviewServer.Protocol
         public string theme;
         public string background;
         public PreviewViewport viewport;
+        public Dictionary<string, PreviewElementState> state;
     }
 
     [Serializable]
     internal sealed class PreviewViewport
     {
         public int width;
+        public int[] widths;
         public string height;
+    }
+
+    [Serializable]
+    internal sealed class PreviewElementState
+    {
+        public JToken value;
+        public int? selectedIndex;
+        public string text;
+        public bool? display;
+        public bool? visible;
+        public bool? enabled;
+        public string[] addClasses;
+        public string[] removeClasses;
     }
 }

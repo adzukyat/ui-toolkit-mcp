@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2026-09-01
+
+- Added preview state for values, selection, text, display, visibility, enabled state, and classes.
+- Added responsive screenshots for several widths in one call.
+- Added overflow reports to layout inspection.
+- Fixed preview viewport defaults in inspection, selected elements inside scroll views, and live window capture coordinates.
+- Marked targets as UXML-only or live so C# initialization requirements are clear.
+
 ## 0.2.0 - 2026-08-25
 
 - Added discovery for all open Unity projects and session-local selection by opaque project id.

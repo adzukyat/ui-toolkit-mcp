@@ -24,6 +24,19 @@ namespace UIToolkitMcpPreviewServer.Rendering
         }
 
         public VisualElement Root => _window.rootVisualElement;
+        public Rect ViewportBounds
+        {
+            get
+            {
+                var root = Root.worldBound;
+                var clip = PanelReflection.GetWorldClip(Root);
+                var xMin = Mathf.Max(root.xMin, clip.xMin);
+                var yMin = Mathf.Max(root.yMin, clip.yMin);
+                var xMax = Mathf.Min(root.xMax, clip.xMax);
+                var yMax = Mathf.Min(root.yMax, clip.yMax);
+                return xMax > xMin && yMax > yMin ? Rect.MinMaxRect(xMin, yMin, xMax, yMax) : root;
+            }
+        }
         public IReadOnlyList<string> Warnings => Array.Empty<string>();
 
         public void SetViewport(int width, int height)
@@ -41,16 +54,13 @@ namespace UIToolkitMcpPreviewServer.Rendering
         public byte[] CapturePng(int width, int height, int offsetY, Color background)
         {
             ValidateLayout();
-            var rootBounds = Root.worldBound;
-            var worldClip = PanelReflection.GetWorldClip(Root);
-            var insetX = Mathf.Max(0, Mathf.CeilToInt(worldClip.xMin - rootBounds.xMin));
-            var insetY = Mathf.Max(0, Mathf.CeilToInt(worldClip.yMin - rootBounds.yMin));
-            var originX = Mathf.Max(0, Mathf.FloorToInt(rootBounds.xMin) + insetX);
-            var originY = Mathf.Max(0, Mathf.FloorToInt(rootBounds.yMin) + insetY);
+            var viewport = ViewportBounds;
+            var originX = Mathf.Max(0, Mathf.FloorToInt(viewport.xMin));
+            var originY = Mathf.Max(0, Mathf.FloorToInt(viewport.yMin));
             if (width > SystemInfo.maxTextureSize - originX || height > SystemInfo.maxTextureSize - originY)
                 throw new InvalidOperationException("The EditorWindow capture plus its panel offset exceeds the maximum texture size.");
             var previous = Root.transform.position;
-            Root.transform.position = new Vector3(previous.x + insetX, previous.y + insetY - offsetY, previous.z);
+            Root.transform.position = new Vector3(previous.x, previous.y - offsetY, previous.z);
             ValidateLayout();
             var renderWidth = width + originX;
             var renderHeight = height + originY;

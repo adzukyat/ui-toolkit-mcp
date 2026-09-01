@@ -23,12 +23,15 @@ namespace UIToolkitMcpPreviewServer
             var editorSupported = EditorPanelSession.IsSupported(out var editorRenderer);
             var graphicsAvailable = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
             var capabilities = new List<string> { "window-inspect" };
+            capabilities.Add("preview-state");
+            capabilities.Add("overflow-report");
             if (graphicsAvailable)
             {
                 capabilities.Add("runtime-render");
                 capabilities.Add("window-render");
                 capabilities.Add("full-height");
                 capabilities.Add("tiled-png");
+                capabilities.Add("multi-width");
                 if (editorSupported)
                     capabilities.Add("editor-render");
             }
@@ -58,10 +61,14 @@ namespace UIToolkitMcpPreviewServer
 
         internal static InspectResult Inspect(InspectParameters parameters)
         {
-            Normalize(parameters);
+            if (parameters == null)
+                throw new ArgumentNullException(nameof(parameters));
             var target = TargetCatalog.Resolve(parameters.target);
+            ApplyPreviewDefaults(parameters, target.preview, target.window);
+            Normalize(parameters);
             using (var session = CreateSession(target, parameters.width, parameters.height, "editor-dark"))
             {
+                var warnings = new List<string>(PreviewStateApplier.Apply(session.Root, target.preview?.state));
                 session.ValidateLayout();
                 var selected = ElementInspector.Find(session.Root, parameters.selector);
                 if (selected == null)
@@ -73,7 +80,8 @@ namespace UIToolkitMcpPreviewServer
                     viewportHeight = parameters.height,
                     selector = parameters.selector,
                     root = ElementInspector.Describe(selected, parameters.depth, parameters.includeResolvedStyles),
-                    warnings = session.Warnings.ToArray()
+                    overflows = ElementInspector.FindOverflows(selected, session.ViewportBounds),
+                    warnings = warnings.Concat(session.Warnings).ToArray()
                 };
             }
         }
@@ -82,17 +90,55 @@ namespace UIToolkitMcpPreviewServer
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 throw new NotSupportedException("Screenshots require a graphics device. Start Unity without -nographics.");
-            Normalize(parameters);
+            if (parameters == null)
+                throw new ArgumentNullException(nameof(parameters));
             var target = TargetCatalog.Resolve(parameters.target);
-            ApplyPreviewDefaults(parameters, target.preview);
+            ApplyPreviewDefaults(parameters, target.preview, target.window);
+            var captures = new List<ScreenshotCapture>();
             var warnings = new List<string>();
+            var selector = parameters.selector;
+            foreach (var width in ResolveWidths(parameters))
+            {
+                var captureParameters = new ScreenshotParameters
+                {
+                    target = parameters.target,
+                    selector = parameters.selector,
+                    width = width,
+                    height = parameters.height,
+                    fullHeight = parameters.fullHeight,
+                    theme = parameters.theme,
+                    background = parameters.background
+                };
+                Normalize(captureParameters);
+                var capture = CaptureScreenshot(target, captureParameters, warnings);
+                captures.Add(capture);
+            }
+
+            var first = captures[0];
+            return new ScreenshotResult
+            {
+                target = target.info,
+                artifacts = captures.SelectMany(capture => capture.artifacts).ToArray(),
+                contentWidth = first.contentWidth,
+                contentHeight = first.contentHeight,
+                tiled = captures.Any(capture => capture.tiled),
+                selector = selector,
+                captures = captures.ToArray(),
+                warnings = warnings.Distinct(StringComparer.Ordinal).ToArray()
+            };
+        }
+
+        private static ScreenshotCapture CaptureScreenshot(ResolvedTarget target, ScreenshotParameters parameters, List<string> warnings)
+        {
             var background = ResolveBackground(parameters.background, parameters.theme);
 
             using (var session = CreateSession(target, parameters.width, parameters.height, parameters.theme))
             using (var expander = new ScrollViewExpander())
+            using (var revealer = new ScrollViewRevealer())
             {
+                warnings.AddRange(PreviewStateApplier.Apply(session.Root, target.preview?.state));
                 session.ValidateLayout();
-                var selector = string.IsNullOrEmpty(parameters.selector) ? target.preview?.selector : parameters.selector;
+                var selector = parameters.selector;
                 var selected = ElementInspector.Find(session.Root, selector);
                 if (selected == null)
                     throw new InvalidOperationException($"Selector '{selector}' did not match any element.");
@@ -100,14 +146,31 @@ namespace UIToolkitMcpPreviewServer
                 var contentHeight = parameters.height;
                 if (parameters.fullHeight)
                 {
-                    expander.Expand(selected, session.ValidateLayout);
+                    expander.Expand(session.Root, session.ValidateLayout);
                     contentHeight = ScrollViewExpander.MeasureContentHeight(selected);
                 }
+                else if (!string.IsNullOrEmpty(selector))
+                {
+                    revealer.Reveal(selected, session.ValidateLayout);
+                }
 
-                var selectedOriginY = Mathf.Max(0, Mathf.FloorToInt(selected.worldBound.yMin - session.Root.worldBound.yMin));
-                var selectedOriginX = Mathf.Max(0, Mathf.FloorToInt(selected.worldBound.xMin - session.Root.worldBound.xMin));
-                var selectedWidth = Mathf.Clamp(Mathf.CeilToInt(selected.worldBound.width), 1, parameters.width - Mathf.Min(selectedOriginX, parameters.width - 1));
-                var selectedHeight = Mathf.Clamp(Mathf.CeilToInt(selected.worldBound.height), 1, parameters.height - Mathf.Min(selectedOriginY, parameters.height - 1));
+                session.ValidateLayout();
+                var viewport = session.ViewportBounds;
+                var visibleXMin = Mathf.Max(selected.worldBound.xMin, viewport.xMin);
+                var visibleXMax = Mathf.Min(selected.worldBound.xMax, viewport.xMin + parameters.width);
+                var visibleYMin = parameters.fullHeight
+                    ? selected.worldBound.yMin
+                    : Mathf.Max(selected.worldBound.yMin, viewport.yMin);
+                var visibleYMax = parameters.fullHeight
+                    ? selected.worldBound.yMax
+                    : Mathf.Min(selected.worldBound.yMax, viewport.yMin + parameters.height);
+                if (!string.IsNullOrEmpty(selector) &&
+                    (visibleXMax <= visibleXMin || (!parameters.fullHeight && visibleYMax <= visibleYMin)))
+                    throw new InvalidOperationException($"Selector '{selector}' is outside the visible capture area.");
+                var selectedOriginY = Mathf.Max(0, Mathf.FloorToInt(visibleYMin - viewport.yMin));
+                var selectedOriginX = Mathf.Max(0, Mathf.FloorToInt(visibleXMin - viewport.xMin));
+                var selectedWidth = Mathf.Max(1, Mathf.CeilToInt(visibleXMax - visibleXMin));
+                var selectedHeight = Mathf.Max(1, Mathf.CeilToInt(visibleYMax - visibleYMin));
                 var captureWidth = string.IsNullOrEmpty(selector) ? parameters.width : selectedWidth;
                 if (!parameters.fullHeight && !string.IsNullOrEmpty(selector))
                     contentHeight = selectedHeight;
@@ -126,40 +189,44 @@ namespace UIToolkitMcpPreviewServer
                         path = path,
                         width = selectedWidth,
                         height = selectedHeight,
-                        offsetY = 0
+                        offsetY = 0,
+                        viewportWidth = parameters.width
                     });
                 }
-                var offset = 0;
-                while (artifacts.Count == 0 && offset < contentHeight)
+                else
                 {
-                    var tileHeight = Mathf.Min(tileLimit, contentHeight - offset);
-                    var raw = session.CapturePng(parameters.width, tileHeight, selectedOriginY + offset, background);
-                    var png = string.IsNullOrEmpty(selector)
-                        ? raw
-                        : PngCropper.Crop(raw, selectedOriginX, 0, selectedWidth, tileHeight);
-                    var path = ArtifactStore.WritePng(png);
-                    artifacts.Add(new ScreenshotArtifact
+                    var offset = 0;
+                    while (offset < contentHeight)
                     {
-                        path = path,
-                        width = string.IsNullOrEmpty(selector) ? parameters.width : selectedWidth,
-                        height = tileHeight,
-                        offsetY = offset
-                    });
-                    offset += tileHeight;
+                        var tileHeight = Mathf.Min(tileLimit, contentHeight - offset);
+                        var raw = session.CapturePng(parameters.width, tileHeight, selectedOriginY + offset, background);
+                        var png = string.IsNullOrEmpty(selector)
+                            ? raw
+                            : PngCropper.Crop(raw, selectedOriginX, 0, selectedWidth, tileHeight);
+                        var path = ArtifactStore.WritePng(png);
+                        artifacts.Add(new ScreenshotArtifact
+                        {
+                            path = path,
+                            width = string.IsNullOrEmpty(selector) ? parameters.width : selectedWidth,
+                            height = tileHeight,
+                            offsetY = offset,
+                            viewportWidth = parameters.width
+                        });
+                        offset += tileHeight;
+                    }
                 }
 
                 warnings.AddRange(session.Warnings);
                 if (artifacts.Count > 1)
-                    warnings.Add($"The full-height capture was split into {artifacts.Count} vertical tiles.");
-                return new ScreenshotResult
+                    warnings.Add($"The {parameters.width}px capture was split into {artifacts.Count} vertical tiles.");
+                return new ScreenshotCapture
                 {
-                    target = target.info,
+                    viewportWidth = parameters.width,
+                    viewportHeight = parameters.height,
                     artifacts = artifacts.ToArray(),
                     contentWidth = captureWidth,
                     contentHeight = contentHeight,
-                    tiled = artifacts.Count > 1,
-                    selector = selector,
-                    warnings = warnings.ToArray()
+                    tiled = artifacts.Count > 1
                 };
             }
         }
@@ -205,23 +272,87 @@ namespace UIToolkitMcpPreviewServer
 
         internal static void ApplyPreviewDefaults(ScreenshotParameters parameters, PreviewDefinition preview)
         {
-            if (preview == null)
-                return;
-            if (string.IsNullOrEmpty(parameters.selector))
-                parameters.selector = preview.selector;
-            if (!string.IsNullOrEmpty(preview.theme) && parameters.theme == "editor-dark")
-                parameters.theme = preview.theme;
-            if (!string.IsNullOrEmpty(preview.background) && parameters.background == "theme")
-                parameters.background = preview.background;
-            if (preview.viewport != null)
+            ApplyPreviewDefaults(parameters, preview, null);
+        }
+
+        private static void ApplyPreviewDefaults(ScreenshotParameters parameters, PreviewDefinition preview, EditorWindow window)
+        {
+            if (preview != null)
             {
-                if (preview.viewport.width >= 64 && parameters.width == 1280)
-                    parameters.width = preview.viewport.width;
-                if (string.Equals(preview.viewport.height, "full", StringComparison.OrdinalIgnoreCase) && parameters.height == 720)
-                    parameters.fullHeight = true;
-                else if (int.TryParse(preview.viewport.height, out var configuredHeight) && parameters.height == 720)
-                    parameters.height = configuredHeight;
+                if (string.IsNullOrEmpty(parameters.selector))
+                    parameters.selector = preview.selector;
+                if (!string.IsNullOrEmpty(preview.theme) && (string.IsNullOrEmpty(parameters.theme) || parameters.theme == "editor-dark"))
+                    parameters.theme = preview.theme;
+                if (!string.IsNullOrEmpty(preview.background) && (string.IsNullOrEmpty(parameters.background) || parameters.background == "theme"))
+                    parameters.background = preview.background;
+                if (preview.viewport != null)
+                {
+                    if ((parameters.widths == null || parameters.widths.Length == 0) &&
+                        (parameters.width <= 0 || parameters.width == 1280))
+                    {
+                        if (preview.viewport.widths != null && preview.viewport.widths.Length > 0)
+                            parameters.widths = preview.viewport.widths;
+                        else if (preview.viewport.width >= 64)
+                            parameters.width = preview.viewport.width;
+                    }
+                    if (string.Equals(preview.viewport.height, "full", StringComparison.OrdinalIgnoreCase) &&
+                        (parameters.height <= 0 || parameters.height == 720))
+                        parameters.fullHeight = true;
+                    else if (int.TryParse(preview.viewport.height, out var configuredHeight) &&
+                             (parameters.height <= 0 || parameters.height == 720))
+                        parameters.height = configuredHeight;
+                }
             }
+
+            ApplyWindowDefaults(window, ref parameters.width, ref parameters.height);
+        }
+
+        internal static void ApplyPreviewDefaults(InspectParameters parameters, PreviewDefinition preview, EditorWindow window)
+        {
+            if (preview != null)
+            {
+                if (string.IsNullOrEmpty(parameters.selector))
+                    parameters.selector = preview.selector;
+                if (preview.viewport != null)
+                {
+                    if ((parameters.width <= 0 || parameters.width == 1280))
+                    {
+                        var configuredWidth = preview.viewport.widths?.FirstOrDefault(width => width >= 64) ?? 0;
+                        if (configuredWidth <= 0)
+                            configuredWidth = preview.viewport.width;
+                        if (configuredWidth >= 64)
+                            parameters.width = configuredWidth;
+                    }
+                    if (int.TryParse(preview.viewport.height, out var configuredHeight) &&
+                        (parameters.height <= 0 || parameters.height == 720))
+                        parameters.height = configuredHeight;
+                }
+            }
+
+            ApplyWindowDefaults(window, ref parameters.width, ref parameters.height);
+        }
+
+        private static void ApplyWindowDefaults(EditorWindow window, ref int width, ref int height)
+        {
+            if (window == null)
+                return;
+            var bounds = window.rootVisualElement.worldBound;
+            if (width <= 0)
+                width = Mathf.RoundToInt(bounds.width > 0f ? bounds.width : window.position.width);
+            if (height <= 0)
+                height = Mathf.RoundToInt(bounds.height > 0f ? bounds.height : window.position.height);
+        }
+
+        private static int[] ResolveWidths(ScreenshotParameters parameters)
+        {
+            var values = parameters.widths != null && parameters.widths.Length > 0
+                ? parameters.widths
+                : new[] { parameters.width };
+            var widths = values
+                .Select(width => Mathf.Clamp(width <= 0 ? 1280 : width, 64, SystemInfo.maxTextureSize))
+                .Distinct()
+                .ToArray();
+            return widths.Length == 0 ? new[] { 1280 } : widths;
         }
 
         private static void Normalize(InspectParameters parameters)

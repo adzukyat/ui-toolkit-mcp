@@ -1,5 +1,7 @@
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
+using UIToolkitMcpPreviewServer.Inspection;
 using UIToolkitMcpPreviewServer.Protocol;
 using UIToolkitMcpPreviewServer.Rendering;
 using UnityEditor;
@@ -85,6 +87,88 @@ namespace UIToolkitMcpPreviewServer.Tests
             Assert.That(result.artifacts[0].height, Is.EqualTo(40));
             Assert.That(File.Exists(result.artifacts[0].path), Is.True);
             File.Delete(result.artifacts[0].path);
+        }
+
+        [Test]
+        public void ScreenshotRevealsElementInsideScrollView()
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required for screenshot verification.");
+
+            var result = PreviewService.Screenshot(new ScreenshotParameters
+            {
+                target = new TargetReference { id = RuntimeFixturePath },
+                selector = "#bottom-sentinel",
+                width = 400,
+                height = 240,
+                theme = "editor-dark",
+                background = "#00000000"
+            });
+            var path = result.artifacts[0].path;
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Assert.That(texture.LoadImage(File.ReadAllBytes(path)), Is.True);
+                Assert.That(texture.width, Is.GreaterThan(100));
+                Assert.That(texture.height, Is.GreaterThan(10));
+                Assert.That(texture.GetPixels32().Any(pixel => pixel.a > 0), Is.True);
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void ScreenshotCapturesEveryRequestedWidth()
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required for screenshot verification.");
+
+            var result = PreviewService.Screenshot(new ScreenshotParameters
+            {
+                target = new TargetReference { id = RuntimeFixturePath },
+                widths = new[] { 360, 520 },
+                height = 240,
+                theme = "editor-dark",
+                background = "#00000000"
+            });
+            try
+            {
+                Assert.That(result.captures.Select(capture => capture.viewportWidth), Is.EqualTo(new[] { 360, 520 }));
+                Assert.That(result.artifacts.Select(artifact => artifact.viewportWidth), Is.EqualTo(new[] { 360, 520 }));
+            }
+            finally
+            {
+                foreach (var artifact in result.artifacts)
+                    File.Delete(artifact.path);
+            }
+        }
+
+        [Test]
+        public void InspectionReportsChildOverflowBounds()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(RuntimeFixturePath);
+            using (var session = new EditorPanelSession(asset, new PreviewDefinition { theme = "editor-dark" }, 400, 300))
+            {
+                var parent = new VisualElement { name = "overflow-parent" };
+                parent.style.width = 100;
+                parent.style.height = 80;
+                var child = new VisualElement { name = "overflow-child" };
+                child.style.position = Position.Absolute;
+                child.style.left = 90;
+                child.style.top = 70;
+                child.style.width = 30;
+                child.style.height = 20;
+                parent.Add(child);
+                session.Root.Add(parent);
+                session.ValidateLayout();
+
+                var overflows = ElementInspector.FindOverflows(parent, session.ViewportBounds);
+                Assert.That(overflows.Any(item => item.path == "#overflow-child" && item.outsideParent &&
+                                                  item.right >= 19f && item.bottom >= 9f), Is.True);
+            }
         }
 
         [TestCase("theme", 255)]

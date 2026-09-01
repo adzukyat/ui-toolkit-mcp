@@ -39,7 +39,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     path = preview.document,
                     type = nameof(VisualTreeAsset),
                     editorOnly = IsEditorDocument(preview.document),
-                    configured = true
+                    configured = true,
+                    initialization = "uxml-only"
                 });
             }
 
@@ -56,7 +57,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     path = path,
                     type = nameof(VisualTreeAsset),
                     editorOnly = IsEditorDocument(path),
-                    configured = configuredPaths.Contains(path)
+                    configured = configuredPaths.Contains(path),
+                    initialization = "uxml-only"
                 });
             }
 
@@ -71,7 +73,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     name = window.GetType().Name,
                     type = window.GetType().FullName,
                     title = window.titleContent?.text,
-                    editorOnly = true
+                    editorOnly = true,
+                    initialization = "live"
                 });
             }
 
@@ -111,7 +114,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     path = preview.document,
                     type = nameof(VisualTreeAsset),
                     editorOnly = IsEditorDocument(preview.document),
-                    configured = true
+                    configured = true,
+                    initialization = "uxml-only"
                 }, preview);
             }
 
@@ -128,7 +132,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     name = Path.GetFileNameWithoutExtension(path),
                     path = path,
                     type = nameof(VisualTreeAsset),
-                    editorOnly = IsEditorDocument(path)
+                    editorOnly = IsEditorDocument(path),
+                    initialization = "uxml-only"
                 }, null);
             }
 
@@ -149,7 +154,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                         name = window.GetType().Name,
                         type = window.GetType().FullName,
                         title = window.titleContent?.text,
-                        editorOnly = true
+                        editorOnly = true,
+                        initialization = "live"
                     }
                 };
             }
@@ -164,7 +170,8 @@ namespace UIToolkitMcpPreviewServer.Targets
                     name = Path.GetFileNameWithoutExtension(path),
                     path = path,
                     type = nameof(VisualTreeAsset),
-                    editorOnly = IsEditorDocument(path)
+                    editorOnly = IsEditorDocument(path),
+                    initialization = "uxml-only"
                 }, null);
             }
 

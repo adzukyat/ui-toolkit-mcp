@@ -20,7 +20,7 @@ const readOnlyAnnotations = {
 export function createServer(): McpServer {
   const session = new ProjectSession();
   const server = new McpServer(
-    { name: "ui-toolkit-mcp-server", version: "0.2.2" },
+    { name: "ui-toolkit-mcp-server", version: "0.3.0" },
     {
       capabilities: { tools: {} },
       instructions:
@@ -71,7 +71,7 @@ export function createServer(): McpServer {
     "ui_list_targets",
     {
       title: "List UI Toolkit targets",
-      description: "List configured previews, UXML assets, and currently open UI Toolkit Editor windows.",
+      description: "List configured previews, UXML-only assets, and live UI Toolkit Editor windows.",
       inputSchema: z.object({
         query: z.string().optional().describe("Case-insensitive filter for id, name, path, type, or title."),
         includePackages: z.boolean().default(true).describe("Include UXML assets from Packages/."),
@@ -100,8 +100,8 @@ export function createServer(): McpServer {
         selector: z.string().optional().describe("Simple selector: :root, #name, .class, element name, or type."),
         depth: z.number().int().min(1).max(64).default(8),
         includeResolvedStyles: z.boolean().default(true),
-        width: z.number().int().min(64).max(16384).default(1280),
-        height: z.number().int().min(64).max(16384).default(720),
+        width: z.number().int().min(64).max(16384).optional().describe("Defaults to the preview configuration, then 1280."),
+        height: z.number().int().min(64).max(16384).optional().describe("Defaults to the preview configuration, then 720."),
       }),
       annotations: readOnlyAnnotations,
     },
@@ -114,8 +114,8 @@ export function createServer(): McpServer {
             ...(selector === undefined ? {} : { selector }),
             depth,
             includeResolvedStyles,
-            width,
-            height,
+            ...(width === undefined ? {} : { width }),
+            ...(height === undefined ? {} : { height }),
           }),
         );
       }),
@@ -125,16 +125,22 @@ export function createServer(): McpServer {
     "ui_screenshot",
     {
       title: "Capture UI Toolkit screenshot",
-      description: "Render a target or selected element to one or more PNG images. Use height='full' for scroll content.",
+      description: "Render a target or selected element to PNG images. Pass several widths to check responsive layouts in one call.",
       inputSchema: z.object({
         target: z.string().min(1).describe("Target id or project-relative .uxml asset path."),
         selector: z.string().optional().describe("Optional element selector to crop around."),
-        width: z.number().int().min(64).max(16384).default(1280),
-        height: z.union([z.number().int().min(64).max(16384), z.literal("full")]).default(720),
-        theme: z.enum(["editor-dark", "editor-light", "runtime"]).default("editor-dark"),
+        width: z
+          .union([
+            z.number().int().min(64).max(16384),
+            z.array(z.number().int().min(64).max(16384)).min(1).max(16),
+          ])
+          .optional()
+          .describe("One width or several widths. Defaults to the preview configuration, then 1280."),
+        height: z.union([z.number().int().min(64).max(16384), z.literal("full")]).optional(),
+        theme: z.enum(["editor-dark", "editor-light", "runtime"]).optional(),
         background: z
           .union([z.literal("theme"), z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/)])
-          .default("theme")
+          .optional()
           .describe("Canvas background. Defaults to the selected theme; use #00000000 for transparency."),
       }),
       annotations: readOnlyAnnotations,
@@ -145,11 +151,11 @@ export function createServer(): McpServer {
         const result = await client.call<ScreenshotResult>("screenshot", {
           target: { id: target },
           ...(selector === undefined ? {} : { selector }),
-          width,
-          height: height === "full" ? 720 : height,
+          ...(Array.isArray(width) ? { widths: width } : width === undefined ? {} : { width }),
+          ...(height === undefined ? {} : { height: height === "full" ? 720 : height }),
           fullHeight: height === "full",
-          theme,
-          background,
+          ...(theme === undefined ? {} : { theme }),
+          ...(background === undefined ? {} : { background }),
         });
         const images = await Promise.all(
           result.artifacts.map(async (artifact) => ({

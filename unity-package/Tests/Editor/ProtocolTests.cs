@@ -91,5 +91,34 @@ namespace UIToolkitMcpPreviewServer.Tests
             PreviewService.ApplyPreviewDefaults(parameters, new PreviewDefinition { background = "#12345678" });
             Assert.That(parameters.background, Is.EqualTo("#AABBCCDD"));
         }
+
+        [Test]
+        public void PreviewViewportAppliesToInspectionDefaults()
+        {
+            var parameters = new InspectParameters();
+            var preview = new PreviewDefinition
+            {
+                selector = "#content",
+                viewport = new PreviewViewport { width = 360, height = "640" }
+            };
+
+            PreviewService.ApplyPreviewDefaults(parameters, preview, null);
+
+            Assert.That(parameters.selector, Is.EqualTo("#content"));
+            Assert.That(parameters.width, Is.EqualTo(360));
+            Assert.That(parameters.height, Is.EqualTo(640));
+        }
+
+        [Test]
+        public void PreviewSupportsSeveralConfiguredWidths()
+        {
+            var parameters = new ScreenshotParameters();
+            PreviewService.ApplyPreviewDefaults(parameters, new PreviewDefinition
+            {
+                viewport = new PreviewViewport { widths = new[] { 360, 520 } }
+            });
+
+            Assert.That(parameters.widths, Is.EqualTo(new[] { 360, 520 }));
+        }
     }
 }

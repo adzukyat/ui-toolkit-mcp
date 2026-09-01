@@ -43,6 +43,55 @@ namespace UIToolkitMcpPreviewServer.Inspection
             return DescribeRecursive(element, depth, includeStyles, BuildPath(element));
         }
 
+        internal static OverflowInfo[] FindOverflows(VisualElement root, Rect viewport)
+        {
+            if (root == null)
+                return Array.Empty<OverflowInfo>();
+            var results = new List<OverflowInfo>();
+            FindOverflowsRecursive(root, viewport, viewport.position, results);
+            return results.ToArray();
+        }
+
+        private static void FindOverflowsRecursive(VisualElement parent, Rect viewport, Vector2 origin, List<OverflowInfo> results)
+        {
+            for (var index = 0; index < parent.hierarchy.childCount; index++)
+            {
+                var child = parent.hierarchy[index];
+                if (child.resolvedStyle.display == DisplayStyle.None || child.resolvedStyle.visibility == Visibility.Hidden ||
+                    child.worldBound.width <= 0f || child.worldBound.height <= 0f)
+                    continue;
+
+                var bounds = child.worldBound;
+                var parentBounds = parent.worldBound;
+                var outsideParent = Exceeds(bounds, parentBounds);
+                var outsideViewport = Exceeds(bounds, viewport);
+                if (outsideParent || outsideViewport)
+                {
+                    results.Add(new OverflowInfo
+                    {
+                        path = BuildPath(child),
+                        parentPath = BuildPath(parent),
+                        bounds = RelativeRect(bounds, origin),
+                        parentBounds = RelativeRect(parentBounds, origin),
+                        outsideParent = outsideParent,
+                        outsideViewport = outsideViewport,
+                        left = Mathf.Max(0f, Mathf.Max(parentBounds.xMin, viewport.xMin) - bounds.xMin),
+                        top = Mathf.Max(0f, Mathf.Max(parentBounds.yMin, viewport.yMin) - bounds.yMin),
+                        right = Mathf.Max(0f, bounds.xMax - Mathf.Min(parentBounds.xMax, viewport.xMax)),
+                        bottom = Mathf.Max(0f, bounds.yMax - Mathf.Min(parentBounds.yMax, viewport.yMax))
+                    });
+                }
+                FindOverflowsRecursive(child, viewport, origin, results);
+            }
+        }
+
+        private static bool Exceeds(Rect bounds, Rect container)
+        {
+            const float tolerance = 0.5f;
+            return bounds.xMin < container.xMin - tolerance || bounds.yMin < container.yMin - tolerance ||
+                   bounds.xMax > container.xMax + tolerance || bounds.yMax > container.yMax + tolerance;
+        }
+
         private static ElementInfo DescribeRecursive(VisualElement element, int remainingDepth, bool includeStyles, string path)
         {
             var children = new List<ElementInfo>();
@@ -149,6 +198,11 @@ namespace UIToolkitMcpPreviewServer.Inspection
         private static RectInfo Rect(Rect value)
         {
             return new RectInfo { x = value.x, y = value.y, width = value.width, height = value.height };
+        }
+
+        private static RectInfo RelativeRect(Rect value, Vector2 origin)
+        {
+            return new RectInfo { x = value.x - origin.x, y = value.y - origin.y, width = value.width, height = value.height };
         }
     }
 }

@@ -37,6 +37,7 @@ namespace UIToolkitMcpPreviewServer.Rendering
         }
 
         public VisualElement Root => _document.rootVisualElement;
+        public Rect ViewportBounds => new Rect(Root.worldBound.xMin, Root.worldBound.yMin, _width, _height);
         public IReadOnlyList<string> Warnings => _warnings;
 
         public void SetViewport(int width, int height)
