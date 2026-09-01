@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Attach Unity's Editor theme before building preview documents so custom control styles match live windows.
+- Preserve Editor preview colors when projects use Linear color space.
+
 ## 0.3.1 - 2026-09-01
 
 - Fixed full-height captures of selected elements inside scroll views.

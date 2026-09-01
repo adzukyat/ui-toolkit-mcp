@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using McpPreviewFixtures;
 using UIToolkitMcpPreviewServer.Inspection;
 using UIToolkitMcpPreviewServer.Protocol;
 using UIToolkitMcpPreviewServer.Rendering;
@@ -19,6 +20,73 @@ namespace UIToolkitMcpPreviewServer.Tests
 
         private const string RuntimeFixturePath = "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/RuntimeFixture.uxml";
         private const string EditorFixturePath = "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/EditorFixture.uxml";
+        private const string CustomControlFixturePath = "Packages/me.adzuki.ui-toolkit-mcp.preview-server/Tests/Editor/Fixtures/CustomControlFixture.uxml";
+
+        [Test]
+        public void BuildsDocumentInsideConnectedPanel()
+        {
+            var wasConnectedWhileBuilding = false;
+            using (var session = new EditorPanelSession(root =>
+                   {
+                       wasConnectedWhileBuilding = root.panel != null;
+                       root.Add(new Label("Connected"));
+                   }, new PreviewDefinition { theme = "editor-dark" }, 400, 300))
+            {
+                Assert.That(wasConnectedWhileBuilding, Is.True);
+                Assert.That(session.Root.panel.GetType().FullName, Is.EqualTo("UnityEditor.UIElements.EditorPanel"));
+                Assert.That(session.Root.Q<Label>(), Is.Not.Null);
+            }
+        }
+
+        [Test]
+        public void AppliesStyleSheetAddedByCustomControlWhileBuilding()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(CustomControlFixturePath);
+            Assert.That(asset, Is.Not.Null);
+
+            using (var session = new EditorPanelSession(asset, new PreviewDefinition { theme = "editor-dark" }, 400, 300))
+            {
+                session.ValidateLayout();
+                var firstButton = session.Root.Q<Button>("first-button");
+                Assert.That(firstButton, Is.Not.Null);
+                Assert.That(firstButton.resolvedStyle.flexGrow, Is.EqualTo(1f));
+                Assert.That(firstButton.layout.width, Is.GreaterThan(100f));
+            }
+        }
+
+        [Test]
+        public void LinearColorSpacePreservesEditorStyleColorInPng()
+        {
+            if (QualitySettings.activeColorSpace != ColorSpace.Linear)
+                return;
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required for screenshot verification.");
+
+            using (var session = new EditorPanelSession(root =>
+                   {
+                       var swatch = new VisualElement { name = "linear-color-swatch" };
+                       swatch.style.width = 400;
+                       swatch.style.height = 300;
+                       swatch.style.backgroundColor = (Color)new Color32(0x58, 0x58, 0x58, 0xff);
+                       root.Add(swatch);
+                   }, new PreviewDefinition { theme = "editor-dark" }, 400, 300))
+            {
+                var png = session.CapturePng(400, 300, 0, Color.clear);
+                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                try
+                {
+                    Assert.That(texture.LoadImage(png), Is.True);
+                    var sample = (Color32)texture.GetPixel(200, 150);
+                    Assert.That(sample.r, Is.InRange(0x54, 0x5c), $"Expected #585858, got #{sample.r:X2}{sample.g:X2}{sample.b:X2}.");
+                    Assert.That(sample.g, Is.InRange(0x54, 0x5c));
+                    Assert.That(sample.b, Is.InRange(0x54, 0x5c));
+                }
+                finally
+                {
+                    Object.DestroyImmediate(texture);
+                }
+            }
+        }
 
         [TestCase(RuntimeFixturePath)]
         [TestCase(EditorFixturePath)]
