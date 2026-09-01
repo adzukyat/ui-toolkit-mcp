@@ -121,6 +121,55 @@ namespace UIToolkitMcpPreviewServer.Tests
         }
 
         [Test]
+        public void FullHeightScreenshotRevealsElementInsideScrollView()
+        {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                Assert.Ignore("A graphics device is required for screenshot verification.");
+
+            var result = PreviewService.Screenshot(new ScreenshotParameters
+            {
+                target = new TargetReference { id = RuntimeFixturePath },
+                selector = "#bottom-sentinel",
+                width = 400,
+                height = 240,
+                fullHeight = true,
+                theme = "editor-dark",
+                background = "#00000000"
+            });
+            var path = result.artifacts[0].path;
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Assert.That(texture.LoadImage(File.ReadAllBytes(path)), Is.True);
+                Assert.That(texture.GetPixels32().Any(pixel => pixel.a > 0 && pixel.r > 150 && pixel.g < 140), Is.True,
+                    "The selected row should be rendered after its scroll view moves it into view.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void InspectionRevealsSelectedScrollContentBeforeReportingOverflow()
+        {
+            var result = PreviewService.Inspect(new InspectParameters
+            {
+                target = new TargetReference { id = RuntimeFixturePath },
+                selector = "#bottom-sentinel",
+                width = 400,
+                height = 240,
+                depth = 2
+            });
+
+            Assert.That(result.root.worldBound.y, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(result.root.worldBound.y + result.root.worldBound.height,
+                Is.LessThanOrEqualTo(result.viewportHeight + 0.5f));
+            Assert.That(result.overflows.All(item => !item.outsideViewport), Is.True);
+        }
+
+        [Test]
         public void ScreenshotCapturesEveryRequestedWidth()
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)

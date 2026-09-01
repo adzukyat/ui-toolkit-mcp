@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed full-height captures of selected elements inside scroll views.
+- Inspect selected scroll content after moving it into view so viewport overflow reports reflect the visible position.
+
 ## 0.3.0 - 2026-09-01
 
 - Added preview state for values, selection, text, display, visibility, enabled state, and classes.

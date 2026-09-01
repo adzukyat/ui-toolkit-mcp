@@ -67,12 +67,16 @@ namespace UIToolkitMcpPreviewServer
             ApplyPreviewDefaults(parameters, target.preview, target.window);
             Normalize(parameters);
             using (var session = CreateSession(target, parameters.width, parameters.height, "editor-dark"))
+            using (var revealer = new ScrollViewRevealer())
             {
                 var warnings = new List<string>(PreviewStateApplier.Apply(session.Root, target.preview?.state));
                 session.ValidateLayout();
                 var selected = ElementInspector.Find(session.Root, parameters.selector);
                 if (selected == null)
                     throw new InvalidOperationException($"Selector '{parameters.selector}' did not match any element.");
+                if (!string.IsNullOrEmpty(parameters.selector))
+                    revealer.Reveal(selected, session.ValidateLayout);
+                session.ValidateLayout();
                 return new InspectResult
                 {
                     target = target.info,
@@ -143,43 +147,48 @@ namespace UIToolkitMcpPreviewServer
                 if (selected == null)
                     throw new InvalidOperationException($"Selector '{selector}' did not match any element.");
 
+                var captureVisibleSelection = !string.IsNullOrEmpty(selector);
+                if (captureVisibleSelection)
+                {
+                    revealer.Reveal(selected, session.ValidateLayout);
+                    session.ValidateLayout();
+                    captureVisibleSelection = !parameters.fullHeight || IsFullyVisible(selected, session.ViewportBounds);
+                }
+
                 var contentHeight = parameters.height;
-                if (parameters.fullHeight)
+                var expandedFullHeight = parameters.fullHeight && !captureVisibleSelection;
+                if (expandedFullHeight)
                 {
                     expander.Expand(session.Root, session.ValidateLayout);
                     contentHeight = ScrollViewExpander.MeasureContentHeight(selected);
-                }
-                else if (!string.IsNullOrEmpty(selector))
-                {
-                    revealer.Reveal(selected, session.ValidateLayout);
                 }
 
                 session.ValidateLayout();
                 var viewport = session.ViewportBounds;
                 var visibleXMin = Mathf.Max(selected.worldBound.xMin, viewport.xMin);
                 var visibleXMax = Mathf.Min(selected.worldBound.xMax, viewport.xMin + parameters.width);
-                var visibleYMin = parameters.fullHeight
+                var visibleYMin = expandedFullHeight
                     ? selected.worldBound.yMin
                     : Mathf.Max(selected.worldBound.yMin, viewport.yMin);
-                var visibleYMax = parameters.fullHeight
+                var visibleYMax = expandedFullHeight
                     ? selected.worldBound.yMax
                     : Mathf.Min(selected.worldBound.yMax, viewport.yMin + parameters.height);
                 if (!string.IsNullOrEmpty(selector) &&
-                    (visibleXMax <= visibleXMin || (!parameters.fullHeight && visibleYMax <= visibleYMin)))
+                    (visibleXMax <= visibleXMin || (!expandedFullHeight && visibleYMax <= visibleYMin)))
                     throw new InvalidOperationException($"Selector '{selector}' is outside the visible capture area.");
                 var selectedOriginY = Mathf.Max(0, Mathf.FloorToInt(visibleYMin - viewport.yMin));
                 var selectedOriginX = Mathf.Max(0, Mathf.FloorToInt(visibleXMin - viewport.xMin));
                 var selectedWidth = Mathf.Max(1, Mathf.CeilToInt(visibleXMax - visibleXMin));
                 var selectedHeight = Mathf.Max(1, Mathf.CeilToInt(visibleYMax - visibleYMin));
                 var captureWidth = string.IsNullOrEmpty(selector) ? parameters.width : selectedWidth;
-                if (!parameters.fullHeight && !string.IsNullOrEmpty(selector))
+                if (captureVisibleSelection)
                     contentHeight = selectedHeight;
                 if ((long)captureWidth * contentHeight > MaximumCapturePixels)
                     throw new InvalidOperationException("The requested capture exceeds 100 megapixels. Use a narrower selector or viewport.");
 
                 var tileLimit = Mathf.Min(PreferredTileHeight, SystemInfo.maxTextureSize);
                 var artifacts = new List<ScreenshotArtifact>();
-                if (!parameters.fullHeight && !string.IsNullOrEmpty(selector))
+                if (captureVisibleSelection)
                 {
                     var raw = session.CapturePng(parameters.width, parameters.height, 0, background);
                     var png = PngCropper.Crop(raw, selectedOriginX, selectedOriginY, selectedWidth, selectedHeight);
@@ -229,6 +238,30 @@ namespace UIToolkitMcpPreviewServer
                     tiled = artifacts.Count > 1
                 };
             }
+        }
+
+        private static bool IsFullyVisible(VisualElement element, Rect viewport)
+        {
+            if (element == null)
+                return false;
+            var bounds = element.worldBound;
+            if (!Contains(viewport, bounds))
+                return false;
+            var ancestor = element.parent;
+            while (ancestor != null)
+            {
+                if (ancestor is ScrollView scrollView && !Contains(scrollView.contentViewport.worldBound, bounds))
+                    return false;
+                ancestor = ancestor.parent;
+            }
+            return true;
+        }
+
+        private static bool Contains(Rect container, Rect bounds)
+        {
+            const float tolerance = 0.5f;
+            return bounds.xMin >= container.xMin - tolerance && bounds.yMin >= container.yMin - tolerance &&
+                   bounds.xMax <= container.xMax + tolerance && bounds.yMax <= container.yMax + tolerance;
         }
 
         internal static ReloadResult Reload(ReloadParameters parameters)
