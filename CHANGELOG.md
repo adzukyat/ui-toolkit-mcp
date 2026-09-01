@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2 - 2026-09-01
 
 - Attach Unity's Editor theme before building preview documents so custom control styles match live windows.
 - Preserve Editor preview colors when projects use Linear color space.

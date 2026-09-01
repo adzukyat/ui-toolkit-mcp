@@ -1,6 +1,6 @@
 {
   "name": "ui-toolkit-mcp-server",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "adzukyat",
   "description": "MCP server for inspecting and capturing Unity UI Toolkit previews",
   "type": "module",
